@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"github.com/F0RG-2142/pokedex/internal/pokecache"
+
 	"github.com/F0RG-2142/pokedex/internal/api"
 )
 
@@ -43,8 +43,13 @@ var commands = map[string]cliCommand{
 }
 
 func cleanInput(text string) []string {
-	command := strings.ToLower(strings.Split(text, " ")[0])
-	return []string{command}
+	cleanStr := []string{}
+	for _, v := range strings.Split(text, " ") {
+		if v != "" { // Skip empty strings
+			cleanStr = append(cleanStr, strings.ToLower(v))
+		}
+	}
+	return cleanStr
 }
 
 func exitCommand(c *api.Config) error {

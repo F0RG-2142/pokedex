@@ -7,20 +7,23 @@ import (
 
 type cacheEntry struct {
 	createdAt time.Time
-	val       []byte
+	Val       []byte
 }
 
 type cache struct {
 	mu sync.Mutex
-	v  map[string]cacheEntry
+	V  map[string]cacheEntry
 }
 
 func NewCache(interval time.Duration) *cache {
 	//Create New Cache
 	var c = cache{
 		mu: sync.Mutex{},
-		v:  make(map[string]cacheEntry),
+		V:  make(map[string]cacheEntry),
 	}
+
+	go c.reapLoop(interval)
+
 	return &c
 }
 
@@ -29,9 +32,9 @@ func (cache *cache) Add(key string, value []byte) {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
-	cache.v[key] = cacheEntry{
+	cache.V[key] = cacheEntry{
 		createdAt: time.Now(),
-		val:       value,
+		Val:       value,
 	}
 }
 
@@ -39,16 +42,26 @@ func (cache *cache) Get(key string) ([]byte, bool) {
 	//`Get entry from cache`
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
-	value, ok := cache.v[key]
+	value, ok := cache.V[key]
 	if !ok {
 		return nil, false
 	}
-	return value.val, true
+	return value.Val, true
 }
 
-func (cache *cache) reapLoop(createdAt time.Time) ([]byte, bool) {
-	//Delete cache entries that are older than a set interval
-	cache.mu.Lock()
-	defer cache.mu.Unlock()
+func (cache *cache) reapLoop(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
 
+	for range ticker.C {
+		// Remove expired entries directly in the loop
+		cache.mu.Lock()
+		now := time.Now()
+		for key, entry := range cache.V {
+			if now.Sub(entry.createdAt) > interval {
+				delete(cache.V, key)
+			}
+		}
+		cache.mu.Unlock()
+	}
 }

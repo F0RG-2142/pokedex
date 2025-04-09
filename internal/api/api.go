@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
+
+	"github.com/F0RG-2142/pokedex/internal/pokecache"
 )
 
 type LocArea struct {
 	ID        int    `json:"id"`
-	Name      string `json:"name"`
+	Name      []byte `json:"name"`
 	GameIndex int    `json:"game_index"`
 }
 
@@ -50,22 +53,43 @@ func MapCommand(c *Config) error {
 
 	fmt.Printf("Displaying locations %d to %d (Page %d)\n", start, end, c.CurrentPage)
 
-	var locArea LocArea
-	for i := start; i <= end; i++ {
-		res, err := http.Get(fmt.Sprintf("https://pokeapi.co/api/v2/location-area/%s/", strconv.Itoa(i)))
-		if err != nil {
-			fmt.Printf("Error fetching data: %v (Continuing...)\n", err)
-			continue
-		}
-		decoder := json.NewDecoder(res.Body)
-		if err := decoder.Decode(&locArea); err != nil {
-			res.Body.Close()
-			return err
-		}
-		fmt.Println(locArea.Name)
-		res.Body.Close()
-	}
+	cache := pokecache.NewCache(5 * time.Minute)
 
+	//Check if page is stored in cache
+	for i := start; i <= end; i++ {
+		apiUrl := fmt.Sprintf("https://pokeapi.co/api/v2/location-area/%s/", strconv.Itoa(i))
+
+		// Try to get from cache
+		cachedData, exists := cache.Get(apiUrl)
+
+		if exists {
+			// Use cached data
+			fmt.Println(string(cachedData))
+		} else {
+			// If not stored in cache, get from API
+			res, err := http.Get(apiUrl)
+			if err != nil {
+				fmt.Printf("Error fetching data: %v (Continuing...)\n", err)
+				continue
+			}
+
+			defer res.Body.Close()
+
+			var locArea struct {
+				Name string `json:"name"`
+			}
+
+			decoder := json.NewDecoder(res.Body)
+			if err := decoder.Decode(&locArea); err != nil {
+				fmt.Printf("Error decoding JSON: %v (Continuing...)\n", err)
+				continue
+			}
+
+			// Print and add to cache
+			fmt.Println(locArea.Name)
+			cache.Add(apiUrl, []byte(locArea.Name))
+		}
+	}
 	return nil
 }
 
@@ -85,20 +109,41 @@ func MapBackCommand(c *Config) error {
 
 	fmt.Printf("Displaying locations %d to %d (Page %d)\n", start, end, c.CurrentPage)
 
-	var locArea LocArea
+	cache := pokecache.NewCache(5 * time.Second)
+
 	for i := start; i <= end; i++ {
-		res, err := http.Get(fmt.Sprintf("https://pokeapi.co/api/v2/location-area/%s/", strconv.Itoa(i)))
-		if err != nil {
-			fmt.Printf("Error fetching data: %v (Continuing...)\n", err)
-			continue
+		apiUrl := fmt.Sprintf("https://pokeapi.co/api/v2/location-area/%s/", strconv.Itoa(i))
+
+		// Try to get from cache
+		cachedData, exists := cache.Get(apiUrl)
+
+		if exists {
+			// Use cached data
+			fmt.Println(string(cachedData))
+		} else {
+			// If not stored in cache, get from API
+			res, err := http.Get(apiUrl)
+			if err != nil {
+				fmt.Printf("Error fetching data: %v (Continuing...)\n", err)
+				continue
+			}
+
+			defer res.Body.Close()
+
+			var locArea struct {
+				Name string `json:"name"`
+			}
+
+			decoder := json.NewDecoder(res.Body)
+			if err := decoder.Decode(&locArea); err != nil {
+				fmt.Printf("Error decoding JSON: %v (Continuing...)\n", err)
+				continue
+			}
+
+			// Print and add to cache
+			fmt.Println(locArea.Name)
+			cache.Add(apiUrl, []byte(locArea.Name))
 		}
-		decoder := json.NewDecoder(res.Body)
-		if err := decoder.Decode(&locArea); err != nil {
-			res.Body.Close()
-			return err
-		}
-		fmt.Println(locArea.Name)
-		res.Body.Close()
 	}
 
 	return nil
