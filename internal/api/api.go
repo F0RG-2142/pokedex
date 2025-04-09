@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,10 +11,21 @@ import (
 	"github.com/F0RG-2142/pokedex/internal/pokecache"
 )
 
+type Pokemon struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+type Encounter struct {
+	Pokemon Pokemon `json:"pokemon"`
+	// Add VersionDetails if needed
+}
+
 type LocArea struct {
-	ID        int    `json:"id"`
-	Name      []byte `json:"name"`
-	GameIndex int    `json:"game_index"`
+	ID             int         `json:"id"`
+	Name           string      `json:"name"`
+	GameIndex      int         `json:"game_index"`
+	PokeEncounters []Encounter `json:"pokemon_encounters"` // Match JSON key
 }
 
 type Page struct {
@@ -32,7 +44,7 @@ var pages = map[int]Page{
 	4: {Start: 61, End: 80},
 }
 
-func MapCommand(c *Config) error {
+func MapCommand(c *Config, _ string) error {
 	// Move to next page
 	c.CurrentPage++
 
@@ -53,7 +65,7 @@ func MapCommand(c *Config) error {
 
 	fmt.Printf("Displaying locations %d to %d (Page %d)\n", start, end, c.CurrentPage)
 
-	cache := pokecache.NewCache(5 * time.Minute)
+	cache := pokecache.NewCache(2 * time.Minute)
 
 	//Check if page is stored in cache
 	for i := start; i <= end; i++ {
@@ -93,7 +105,7 @@ func MapCommand(c *Config) error {
 	return nil
 }
 
-func MapBackCommand(c *Config) error {
+func MapBackCommand(c *Config, _ string) error {
 	// Move to previous page
 	c.CurrentPage--
 
@@ -109,7 +121,7 @@ func MapBackCommand(c *Config) error {
 
 	fmt.Printf("Displaying locations %d to %d (Page %d)\n", start, end, c.CurrentPage)
 
-	cache := pokecache.NewCache(5 * time.Second)
+	cache := pokecache.NewCache(2 * time.Minute)
 
 	for i := start; i <= end; i++ {
 		apiUrl := fmt.Sprintf("https://pokeapi.co/api/v2/location-area/%s/", strconv.Itoa(i))
@@ -146,5 +158,54 @@ func MapBackCommand(c *Config) error {
 		}
 	}
 
+	return nil
+}
+
+func ExploreCommand(c *Config, location string) error {
+	encounterCache := pokecache.NewCache(2 * time.Minute)
+	apiUrl := fmt.Sprintf("https://pokeapi.co/api/v2/location-area/%s/", location)
+
+	// Check if data is in cache
+	cachedData, exists := encounterCache.Get(apiUrl)
+	if exists {
+		var locationArea LocArea
+		if err := json.Unmarshal(cachedData, &locationArea); err != nil {
+			return fmt.Errorf("error parsing cached data: %v", err)
+		}
+		for _, encounter := range locationArea.PokeEncounters {
+			fmt.Printf("- %s\n", encounter.Pokemon.Name)
+		}
+		return nil
+	}
+
+	// Fetch from API
+	res, err := http.Get(apiUrl)
+	if err != nil {
+		return fmt.Errorf("error exploring %s: %v", location, err)
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return fmt.Errorf("error reading response: %v", err)
+	}
+	// fmt.Println("Raw JSON:", string(body))
+	//Unmarshal JSON
+	var locationArea LocArea
+	if err = json.Unmarshal(body, &locationArea); err != nil {
+		return fmt.Errorf("error decoding JSON: %v", err)
+	}
+	// fmt.Printf("Parsed: %+v\n", locationArea)
+	//Add to cache
+	encounterCache.Add(apiUrl, body)
+
+	for _, encounter := range locationArea.PokeEncounters {
+		fmt.Printf("- %s\n", encounter.Pokemon.Name)
+	}
+
+	return nil
+}
+
+func CatchCommand(c *Config, pokemon string) error {
 	return nil
 }
