@@ -5,16 +5,18 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"github.com/F0RG-2142/pokedex/internal/pokecache"
+	"github.com/F0RG-2142/pokedex/internal/api"
 )
 
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*config) error
+	callback    func(*api.Config) error
 }
 
-var c = config{
-	currentPage: 0,
+var c = api.Config{
+	CurrentPage: 0,
 }
 
 var commands = map[string]cliCommand{
@@ -31,12 +33,12 @@ var commands = map[string]cliCommand{
 	"map": {
 		name:        "map",
 		description: "map location areas",
-		callback:    mapCommand,
+		callback:    api.MapCommand,
 	},
 	"mapb": {
 		name:        "mapback",
 		description: "get previous 20 locations",
-		callback:    mapBackCommand,
+		callback:    api.MapBackCommand,
 	},
 }
 
@@ -45,13 +47,13 @@ func cleanInput(text string) []string {
 	return []string{command}
 }
 
-func exitCommand(c *config) error {
+func exitCommand(c *api.Config) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func helpCommand(c *config) error {
+func helpCommand(c *api.Config) error {
 	fmt.Println("Welcome to the Pokedex!\n\nUsage:\nhelp: Displays a help message\nexit: Exit the Pokedex")
 	return nil
 }

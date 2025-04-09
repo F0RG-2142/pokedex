@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/json"
@@ -7,50 +7,50 @@ import (
 	"strconv"
 )
 
-type locArea struct {
+type LocArea struct {
 	ID        int    `json:"id"`
 	Name      string `json:"name"`
 	GameIndex int    `json:"game_index"`
 }
 
-type page struct {
+type Page struct {
 	Start int
 	End   int
 }
 
-type config struct {
-	currentPage int
+type Config struct {
+	CurrentPage int
 }
 
-var pages = map[int]page{
+var pages = map[int]Page{
 	1: {Start: 1, End: 20},
 	2: {Start: 21, End: 40},
 	3: {Start: 41, End: 60},
 	4: {Start: 61, End: 80},
 }
 
-func mapCommand(c *config) error {
+func MapCommand(c *Config) error {
 	// Move to next page
-	c.currentPage++
+	c.CurrentPage++
 
 	// Don't go beyond the defined pages
-	if _, exists := pages[c.currentPage]; !exists {
+	if _, exists := pages[c.CurrentPage]; !exists {
 		// If page doesn't exist, create it dynamically
-		lastPage := c.currentPage - 1
+		lastPage := c.CurrentPage - 1
 		lastEnd := pages[lastPage].End
-		pages[c.currentPage] = page{
+		pages[c.CurrentPage] = Page{
 			Start: lastEnd + 1,
 			End:   lastEnd + 20,
 		}
 	}
 
-	currentPage := pages[c.currentPage]
-	start := currentPage.Start
-	end := currentPage.End
+	CurrentPage := pages[c.CurrentPage]
+	start := CurrentPage.Start
+	end := CurrentPage.End
 
-	fmt.Printf("Displaying locations %d to %d (Page %d)\n", start, end, c.currentPage)
+	fmt.Printf("Displaying locations %d to %d (Page %d)\n", start, end, c.CurrentPage)
 
-	var locArea locArea
+	var locArea LocArea
 	for i := start; i <= end; i++ {
 		res, err := http.Get(fmt.Sprintf("https://pokeapi.co/api/v2/location-area/%s/", strconv.Itoa(i)))
 		if err != nil {
@@ -69,23 +69,23 @@ func mapCommand(c *config) error {
 	return nil
 }
 
-func mapBackCommand(c *config) error {
+func MapBackCommand(c *Config) error {
 	// Move to previous page
-	c.currentPage--
+	c.CurrentPage--
 
 	// Don't go below page 1
-	if c.currentPage < 1 {
-		c.currentPage = 1
+	if c.CurrentPage < 1 {
+		c.CurrentPage = 1
 		fmt.Println("At the first page already!")
 	}
 
-	currentPage := pages[c.currentPage]
-	start := currentPage.Start
-	end := currentPage.End
+	CurrentPage := pages[c.CurrentPage]
+	start := CurrentPage.Start
+	end := CurrentPage.End
 
-	fmt.Printf("Displaying locations %d to %d (Page %d)\n", start, end, c.currentPage)
+	fmt.Printf("Displaying locations %d to %d (Page %d)\n", start, end, c.CurrentPage)
 
-	var locArea locArea
+	var locArea LocArea
 	for i := start; i <= end; i++ {
 		res, err := http.Get(fmt.Sprintf("https://pokeapi.co/api/v2/location-area/%s/", strconv.Itoa(i)))
 		if err != nil {
