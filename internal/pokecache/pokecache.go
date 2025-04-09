@@ -36,12 +36,14 @@ func (cache *cache) Add(key string, value []byte) {
 }
 
 func (cache *cache) Get(key string) ([]byte, bool) {
-	//Get entry from cache
+	//`Get entry from cache`
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
-
-	value := cache.v[key]
-	
+	value, ok := cache.v[key]
+	if !ok {
+		return nil, false
+	}
+	return value.val, true
 }
 
 func (cache *cache) reapLoop(createdAt time.Time) ([]byte, bool) {
