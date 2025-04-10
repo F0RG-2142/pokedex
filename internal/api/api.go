@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
@@ -12,13 +13,13 @@ import (
 )
 
 type Pokemon struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
+	Name   string `json:"name"`
+	URL    string `json:"url"`
+	BaseXp int    `json:"base_experience"`
 }
 
 type Encounter struct {
 	Pokemon Pokemon `json:"pokemon"`
-	// Add VersionDetails if needed
 }
 
 type LocArea struct {
@@ -35,6 +36,8 @@ type Page struct {
 
 type Config struct {
 	CurrentPage int
+	Cache       *pokecache.Cache
+	Pokedex     map[string]Pokemon
 }
 
 var pages = map[int]Page{
@@ -207,5 +210,42 @@ func ExploreCommand(c *Config, location string) error {
 }
 
 func CatchCommand(c *Config, pokemon string) error {
+	//Fetch from api
+	fmt.Printf("Throwing a pokeball at %s\n", pokemon)
+	res, err := http.Get(fmt.Sprintf("https://pokeapi.co/api/v2/pokemon/%s/", pokemon))
+	if err != nil {
+		return fmt.Errorf("couldnt fetch pokemon data: %v", err)
+	}
+	//Read and decode response
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return fmt.Errorf("error reading response body: %v", err)
+	}
+	defer res.Body.Close()
+
+	var fetchedPokemon Pokemon
+	if err := json.Unmarshal(body, &fetchedPokemon); err != nil {
+		return fmt.Errorf("error unmarshaling JSON")
+	}
+	//Chance-to-catch logic
+	catchChance := max(1.0-(float64(fetchedPokemon.BaseXp)/650.0), 0.1) //Chance floor is 10%
+	time.Sleep(1 * time.Second)
+	//Catch and print error or pokedex
+	if rand.Float64() < catchChance {
+
+		fmt.Printf("Gotcha! %s was caught!\n", pokemon)
+		c.Pokedex[pokemon] = fetchedPokemon
+		fmt.Println("Pokedex:")
+		for _, v := range c.Pokedex {
+			fmt.Println(v.Name)
+		}
+	} else {
+		fmt.Printf("%s broke free!\n", pokemon)
+	}
+
+	return nil
+}
+
+func InspectCommand(c *Config, pokemon string) error {
 	return nil
 }

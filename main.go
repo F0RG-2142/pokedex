@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/F0RG-2142/pokedex/internal/pokecache"
 
 	"github.com/F0RG-2142/pokedex/internal/api"
 )
@@ -13,10 +16,6 @@ type cliCommand struct {
 	name        string
 	description string
 	callback    func(*api.Config, string) error
-}
-
-var c = api.Config{
-	CurrentPage: 0,
 }
 
 var commands = map[string]cliCommand{
@@ -75,6 +74,11 @@ func helpCommand(c *api.Config, _ string) error {
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
+	c := api.Config{
+		CurrentPage: 0,
+		Cache:       pokecache.NewCache(2 * time.Minute),
+		Pokedex:     make(map[string]api.Pokemon), // Initialize here
+	}
 	for {
 		fmt.Printf("Pokedex > ")
 		scanner.Scan()
@@ -84,6 +88,15 @@ func main() {
 		if len(text) > 1 {
 			arg = text[1]
 		}
-		commands[command].callback(&c, arg)
+
+		cmd, exists := commands[command]
+		if !exists {
+			fmt.Printf("The '%s' command does not exist\n", command)
+			continue
+		}
+		if err := cmd.callback(&c, arg); err != nil {
+			fmt.Printf("The '%s' command does not exist", command)
+			continue
+		}
 	}
 }
