@@ -78,7 +78,16 @@ func exitCommand(c *api.Config, _ string) error {
 }
 
 func helpCommand(c *api.Config, _ string) error {
-	fmt.Println("Welcome to the Pokedex!\n\nUsage:\nhelp: Displays a help message\nexit: Exit the Pokedex")
+	fmt.Println(`Welcome to the Pokedex!
+	
+	Usage:
+	help: Displays a help message
+	exit: Exit the Pokedex
+	map/mapb: move forwards and backwards through the map
+	explore: explore a specific area in the map
+	catch: catch a pokemon in your area
+	pokedex: view all the pokemon in your pokedex
+	inspect: inspect a pokemon in your pokedex`)
 	return nil
 }
 
