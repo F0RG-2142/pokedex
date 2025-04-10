@@ -49,6 +49,16 @@ var commands = map[string]cliCommand{
 		description: "catch a specified pokemon",
 		callback:    api.CatchCommand,
 	},
+	"inspect": {
+		name:        "inspect",
+		description: "inspect a specified pokemon",
+		callback:    api.InspectCommand,
+	},
+	"pokedex": {
+		name:        "pokedex",
+		description: "print pokedex",
+		callback:    api.PokedexCommand,
+	},
 }
 
 func cleanInput(text string) []string {
@@ -94,9 +104,6 @@ func main() {
 			fmt.Printf("The '%s' command does not exist\n", command)
 			continue
 		}
-		if err := cmd.callback(&c, arg); err != nil {
-			fmt.Printf("The '%s' command does not exist", command)
-			continue
-		}
+		cmd.callback(&c, arg)
 	}
 }
